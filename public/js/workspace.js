@@ -25,6 +25,27 @@ let hasUnsavedChanges = false;
 /** クライアント側で新規追加した要素に割り当てる一時的なIDを生成する。 */
 const makeTempId = () => `new-${crypto.randomUUID()}`;
 
+/**
+ * デフォルト値の入力文字列を列のデータ型に応じた型へ変換する。
+ * 変換できない場合は入力文字列のまま返す。
+ * @param {string} raw - トリム済みの入力文字列
+ * @param {string} dataType - 列のデータ型
+ * @returns {string|number|boolean|null}
+ */
+function coerceDefaultValue(raw, dataType) {
+  if (!raw) { return null; }
+  if (dataType === DATA_TYPES.NUMBER) {
+    const num = Number(raw);
+    return isNaN(num) ? raw : num;
+  }
+  if (dataType === DATA_TYPES.BOOLEAN) {
+    if (raw === 'true') { return true; }
+    if (raw === 'false') { return false; }
+    return raw;
+  }
+  return raw;
+}
+
 /** ドラフトに未保存の変更があることを記録する。 */
 function markDirty() {
   hasUnsavedChanges = true;
@@ -583,7 +604,7 @@ function commitFormToColumn() {
   col.cssClassIds = cssClasses.filter((c) => cssIds.includes(c._id));
 
   col.required = document.getElementById('fRequired').checked;
-  col.defaultValue = document.getElementById('fDefault').value.trim() || null;
+  col.defaultValue = coerceDefaultValue(document.getElementById('fDefault').value.trim(), col.dataType);
 
   const errEl = document.getElementById('fValidationError');
   const rawVal = document.getElementById('fValidation').value.trim();
