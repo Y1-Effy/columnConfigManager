@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Dev Server (watch)",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": ["--watch"],
+      "program": "${workspaceFolder}/server.js",
+      "envFile": "${workspaceFolder}/.env",
+      "restart": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Seed",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/seed.js",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    }
+  ]
+}
