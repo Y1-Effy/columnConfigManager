@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Column Config Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="topbar">
+    <span class="topbar-title">Column Config Manager</span>
+    <a href="/settings.html">マスタ設定</a>
+  </nav>
+
+  <main class="page-container">
+    <div class="page-header">
+      <h1>プロジェクト一覧</h1>
+      <button class="btn btn-sm btn-primary" id="addProjectBtn">＋新規プロジェクト追加</button>
+    </div>
+
+    <ul class="project-list" id="projectList">
+      <li class="text-muted" id="emptyMsg">読み込み中...</li>
+    </ul>
+  </main>
+
+  <!-- Edit modal -->
+  <div class="modal-backdrop hidden" id="editModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+      <div class="modal-header">
+        <span id="editModalTitle">プロジェクト編集</span>
+        <button class="modal-close" id="editClose" data-modal-close="editModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        <div class="form-group">
+          <label for="editName">プロジェクト名 <span class="text-danger">*</span></label>
+          <input type="text" id="editName">
+        </div>
+        <div class="form-group">
+          <label for="editDesc">説明</label>
+          <input type="text" id="editDesc">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="editCancel" data-modal-close="editModal">キャンセル</button>
+        <button class="btn btn-primary" id="editSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create modal -->
+  <div class="modal-backdrop hidden" id="createModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="createModalTitle">
+      <div class="modal-header">
+        <span id="createModalTitle">新規プロジェクト</span>
+        <button class="modal-close" data-modal-close="createModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="createName">プロジェクト名 <span class="text-danger">*</span></label>
+          <input type="text" id="createName" placeholder="例：受注管理システム">
+        </div>
+        <div class="form-group">
+          <label for="createDesc">説明</label>
+          <input type="text" id="createDesc" placeholder="任意">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-modal-close="createModal">キャンセル</button>
+        <button class="btn btn-primary" id="createSave">作成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal-backdrop hidden" id="confirmModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="modal-header">
+        <span id="confirmModalTitle">確認</span>
+        <button class="modal-close" data-modal-close="confirmModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="margin:0;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-modal-close="confirmModal">キャンセル</button>
+        <button class="btn btn-danger" id="confirmOk">削除する</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module" src="/js/projects.js"></script>
+</body>
+</html>

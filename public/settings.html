@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マスタ設定 - Column Config Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="settings-layout">
+    <nav class="topbar">
+      <a href="/">← 一覧</a>
+      <span class="topbar-title">マスタ設定</span>
+    </nav>
+
+    <div class="settings-body-layout">
+
+      <!-- Left: master selector -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span>マスタ選択</span>
+        </div>
+        <div class="sidebar-scroll">
+          <div class="settings-nav-item selected" data-settings-nav="format">フォーマットマスタ</div>
+          <div class="settings-nav-item" data-settings-nav="css">CSSクラスマスタ</div>
+        </div>
+      </aside>
+
+      <!-- Right: content -->
+      <div class="settings-body">
+
+        <!-- Format section -->
+        <div class="settings-section" id="formatSection">
+          <h2>フォーマットマスタ</h2>
+          <button class="btn btn-primary btn-sm mb-2" id="addFormatBtn">＋フォーマットを追加</button>
+          <table class="data-table master-table" id="formatTable">
+            <thead>
+              <tr>
+                <th scope="col">データ型</th>
+                <th scope="col">値</th>
+                <th scope="col">説明</th>
+                <th scope="col" class="td-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="formatTbody">
+              <tr><td colspan="4" class="text-muted">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- CssClass section -->
+        <div class="settings-section hidden" id="cssSection">
+          <h2>CSSクラスマスタ</h2>
+          <button class="btn btn-primary btn-sm mb-2" id="addCssBtn">＋CSSクラスを追加</button>
+          <table class="data-table master-table" id="cssTable">
+            <thead>
+              <tr>
+                <th scope="col">クラス名</th>
+                <th scope="col">説明</th>
+                <th scope="col" class="td-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="cssTbody">
+              <tr><td colspan="3" class="text-muted">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Format modal -->
+  <div class="modal-backdrop hidden" id="formatModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="formatModalTitle">
+      <div class="modal-header">
+        <span id="formatModalTitle">フォーマット追加</span>
+        <button class="modal-close" id="formatModalClose" data-modal-close="formatModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="formatModalId">
+        <div class="form-group">
+          <label for="formatModalType">データ型 <span class="text-danger">*</span></label>
+          <select id="formatModalType">
+            <option value="Date">Date</option>
+            <option value="Number">Number</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="formatModalValue">値 <span class="text-danger">*</span></label>
+          <input type="text" id="formatModalValue" placeholder="例：yyyy/MM/dd">
+        </div>
+        <div class="form-group">
+          <label for="formatModalDesc">説明</label>
+          <input type="text" id="formatModalDesc" placeholder="例：年/月/日">
+        </div>
+        <div class="form-group">
+          <label for="formatModalOrder">並び順</label>
+          <input type="number" id="formatModalOrder" min="0" value="0">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="formatModalCancel" data-modal-close="formatModal">キャンセル</button>
+        <button class="btn btn-primary" id="formatModalSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CssClass modal -->
+  <div class="modal-backdrop hidden" id="cssModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cssModalTitle">
+      <div class="modal-header">
+        <span id="cssModalTitle">CSSクラス追加</span>
+        <button class="modal-close" id="cssModalClose" data-modal-close="cssModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="cssModalId">
+        <div class="form-group">
+          <label for="cssModalValue">クラス名 <span class="text-danger">*</span></label>
+          <input type="text" id="cssModalValue" placeholder="例：cell-center">
+        </div>
+        <div class="form-group">
+          <label for="cssModalDesc">説明</label>
+          <input type="text" id="cssModalDesc" placeholder="例：中央寄せ">
+        </div>
+        <div class="form-group">
+          <label for="cssModalOrder">並び順</label>
+          <input type="number" id="cssModalOrder" min="0" value="0">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="cssModalCancel" data-modal-close="cssModal">キャンセル</button>
+        <button class="btn btn-primary" id="cssModalSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal-backdrop hidden" id="confirmModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="modal-header">
+        <span id="confirmModalTitle">確認</span>
+        <button class="modal-close" data-modal-close="confirmModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="margin:0;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-modal-close="confirmModal">キャンセル</button>
+        <button class="btn btn-danger" id="confirmOk">削除する</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module" src="/js/settings.js"></script>
+</body>
+</html>

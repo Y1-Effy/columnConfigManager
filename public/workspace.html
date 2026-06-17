@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>エディタ - Column Config Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="workspace">
+    <!-- Top bar -->
+    <div class="workspace-bar">
+      <a href="/">← 一覧</a>
+      <span class="project-label" id="projectLabel">読み込み中...</span>
+    </div>
+
+    <!-- Action toolbar -->
+    <div class="workspace-toolbar">
+      <button class="btn btn-primary btn-sm" id="btnSave">保存</button>
+      <button class="btn btn-primary btn-sm" id="btnExport">JSON出力</button>
+      <button class="btn btn-primary btn-sm" id="btnSnapshot">復元ポイント保存</button>
+      <button class="btn btn-outline btn-sm" id="btnSnapshotDiff">復元ポイント確認</button>
+      <button class="btn btn-outline btn-sm" id="btnHistory">変更履歴</button>
+    </div>
+
+    <!-- 3-pane body -->
+    <div class="workspace-body">
+
+      <!-- Left: sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span>カテゴリ / 列</span>
+          <button class="btn btn-sm btn-primary" id="addCategoryBtn">＋カテゴリ</button>
+        </div>
+        <div class="sidebar-scroll" id="sidebarScroll">
+          <p class="text-muted" style="padding:12px;font-size:12px;" id="sidebarEmpty">読み込み中...</p>
+        </div>
+      </aside>
+
+      <div class="resize-handle" id="sidebarResizeHandle" role="separator" aria-orientation="vertical" aria-label="サイドバーの幅を変更"></div>
+
+      <!-- Center: editor form -->
+      <section class="editor-pane">
+        <div class="editor-pane-header">
+          <span id="formTitle">列定義フォーム</span>
+        </div>
+        <div class="editor-pane-body" id="editorBody">
+          <div class="editor-placeholder" id="editorPlaceholder">
+            左のリストから列を選択するか、<br>新しい列を追加してください
+          </div>
+
+          <div id="columnForm" class="hidden">
+            <div class="form-group">
+              <label for="fKey">キー名 <span class="text-danger">*</span></label>
+              <input type="text" id="fKey" placeholder="例：orderDate">
+              <small class="text-muted" id="fKeyError" style="color:#dc3545;display:none;"></small>
+            </div>
+            <div class="form-group">
+              <label for="fLabel">表示ラベル <span class="text-danger">*</span></label>
+              <input type="text" id="fLabel" placeholder="例：受注日">
+            </div>
+            <div class="form-group">
+              <label for="fDataType">データ型</label>
+              <select id="fDataType">
+                <option value="">（未設定）</option>
+                <option value="string">string（文字列）</option>
+                <option value="number">number（数値）</option>
+                <option value="date">date（日付）</option>
+                <option value="boolean">boolean（真偽値）</option>
+              </select>
+            </div>
+            <div class="form-group" id="fFormatGroup">
+              <label for="fFormat">フォーマット</label>
+              <select id="fFormat">
+                <option value="">（なし）</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>CSSクラス</label>
+              <div class="checkbox-group" id="fCssClasses"></div>
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="fRequired" style="margin-right:6px;">
+                必須
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="fDefault">デフォルト値</label>
+              <input type="text" id="fDefault" placeholder="任意">
+            </div>
+            <div class="form-group">
+              <label for="fValidation">バリデーション（JSON）</label>
+              <textarea id="fValidation" placeholder='例: {"min": 0, "max": 100}'></textarea>
+              <small class="text-muted" id="fValidationError" style="color:#dc3545;display:none;"></small>
+            </div>
+          </div>
+        </div>
+        <div class="editor-actions" id="editorActions" style="display:none;">
+          <button class="btn btn-outline" id="cancelEditBtn">閉じる</button>
+        </div>
+      </section>
+
+      <div class="resize-handle" id="previewResizeHandle" role="separator" aria-orientation="vertical" aria-label="プレビューの幅を変更"></div>
+
+      <!-- Right: live preview -->
+      <aside class="preview-pane">
+        <div class="preview-pane-header">ライブプレビュー</div>
+        <div class="preview-scroll" id="previewScroll">
+          <p class="preview-empty" id="previewEmpty">列がありません。列を追加するとプレビューが表示されます。</p>
+          <div class="preview-table-wrap hidden" id="previewTableWrap">
+            <table class="data-table preview-table" id="previewTable"></table>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- Add category modal -->
+  <div class="modal-backdrop hidden" id="addCategoryModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
+      <div class="modal-header">
+        <span id="categoryModalTitle">カテゴリ追加</span>
+        <button class="modal-close" id="categoryModalClose" data-modal-close="addCategoryModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="categoryModalId">
+        <div class="form-group">
+          <label for="categoryModalName">カテゴリ名 <span class="text-danger">*</span></label>
+          <input type="text" id="categoryModalName">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="categoryModalCancel" data-modal-close="addCategoryModal">キャンセル</button>
+        <button class="btn btn-primary" id="categoryModalSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add column modal -->
+  <div class="modal-backdrop hidden" id="addColumnModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addColumnModalTitle">
+      <div class="modal-header">
+        <span id="addColumnModalTitle">列を追加</span>
+        <button class="modal-close" id="columnModalClose" data-modal-close="addColumnModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="columnModalCategoryId">
+        <div class="form-group">
+          <label for="columnModalKey">キー名 <span class="text-danger">*</span></label>
+          <input type="text" id="columnModalKey" placeholder="例：orderDate">
+        </div>
+        <div class="form-group">
+          <label for="columnModalLabel">表示ラベル <span class="text-danger">*</span></label>
+          <input type="text" id="columnModalLabel" placeholder="例：受注日">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="columnModalCancel" data-modal-close="addColumnModal">キャンセル</button>
+        <button class="btn btn-primary" id="columnModalSave">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export JSON modal -->
+  <div class="modal-backdrop hidden" id="exportModal">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+      <div class="modal-header">
+        <span id="exportModalTitle">JSON出力</span>
+        <button class="modal-close" id="exportModalClose" data-modal-close="exportModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre class="json-preview" id="exportJsonPreview"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="exportModalClose2" data-modal-close="exportModal">閉じる</button>
+        <button class="btn btn-primary" id="exportDownloadBtn">ダウンロード</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Snapshot name modal -->
+  <div class="modal-backdrop hidden" id="snapshotNameModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="snapshotNameModalTitle">
+      <div class="modal-header">
+        <span id="snapshotNameModalTitle">復元ポイントを保存</span>
+        <button class="modal-close" data-modal-close="snapshotNameModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="snapshotWarnings" class="hidden"></div>
+        <div class="form-group">
+          <label for="snapshotNameInput">名前（任意）</label>
+          <input type="text" id="snapshotNameInput" placeholder="例：リリース前の状態">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-modal-close="snapshotNameModal">キャンセル</button>
+        <button class="btn btn-primary" id="snapshotNameModalSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal-backdrop hidden" id="confirmModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="modal-header">
+        <span id="confirmModalTitle">確認</span>
+        <button class="modal-close" data-modal-close="confirmModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="margin:0;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-modal-close="confirmModal">キャンセル</button>
+        <button class="btn btn-danger" id="confirmOk">削除する</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module" src="/js/workspace.js"></script>
+</body>
+</html>

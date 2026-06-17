@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>復元ポイント確認 - Column Config Manager</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="snapshot-page">
+    <div class="workspace-bar">
+      <a href="#" id="editorLink" style="pointer-events:none;">← エディタ</a>
+      <span class="project-label" id="projectLabel">読み込み中...</span>
+    </div>
+
+    <div class="workspace-toolbar">
+      <button class="btn btn-primary btn-sm" id="btnRestore" disabled>復元</button>
+    </div>
+
+    <p class="text-muted hidden" id="snapshotEmptyMessage" style="padding:24px;">
+      復元ポイントがありません。エディタで「復元ポイント保存」を実行すると、ここに表示されます。
+    </p>
+
+    <div class="snapshot-body hidden" id="snapshotBody">
+      <!-- 1: 復元ポイント一覧 + 差分簡易説明 -->
+      <aside class="snapshot-pane">
+        <div class="sidebar-header"><span>復元ポイント</span></div>
+        <div class="snapshot-list" id="snapshotList"></div>
+        <div class="snapshot-summary">
+          <h3>現在との差分</h3>
+          <ul class="snapshot-summary-list" id="snapshotSummaryList"></ul>
+        </div>
+      </aside>
+
+      <div class="resize-handle" id="snapshotPaneResizeHandle" role="separator" aria-orientation="vertical" aria-label="復元ポイント欄の幅を変更"></div>
+
+      <!-- 2: カテゴリ/列ツリー（読み取り専用） -->
+      <aside class="sidebar">
+        <div class="sidebar-header"><span>カテゴリ / 列</span></div>
+        <div class="sidebar-scroll" id="sidebarScroll"></div>
+      </aside>
+
+      <div class="resize-handle" id="snapshotSidebarResizeHandle" role="separator" aria-orientation="vertical" aria-label="カテゴリ/列欄の幅を変更"></div>
+
+      <!-- 3: 列定義（読み取り専用） -->
+      <section class="editor-pane">
+        <div class="editor-pane-header"><span id="formTitle">列定義</span></div>
+        <div class="editor-pane-body">
+          <div class="editor-placeholder" id="editorPlaceholder">左のリストから列を選択してください</div>
+          <dl class="detail-list hidden" id="columnDetail"></dl>
+        </div>
+      </section>
+
+      <div class="resize-handle" id="snapshotPreviewResizeHandle" role="separator" aria-orientation="vertical" aria-label="プレビューの幅を変更"></div>
+
+      <!-- 4: サンプルプレビュー -->
+      <aside class="preview-pane">
+        <div class="preview-pane-header">サンプルプレビュー</div>
+        <div class="preview-scroll" id="previewScroll">
+          <p class="preview-empty" id="previewEmpty"></p>
+          <div class="preview-table-wrap hidden" id="previewTableWrap">
+            <table class="data-table preview-table" id="previewTable"></table>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal-backdrop hidden" id="confirmModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="modal-header">
+        <span id="confirmModalTitle">確認</span>
+        <button class="modal-close" data-modal-close="confirmModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage" style="margin:0;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-modal-close="confirmModal">キャンセル</button>
+        <button class="btn btn-danger" id="confirmOk">削除する</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module" src="/js/snapshots.js"></script>
+</body>
+</html>
