@@ -438,3 +438,98 @@ describe('GET /api/projects/:id/snapshots/:snapshotId/diff', () => {
     expect(res.body.data.operations).toEqual([]);
   });
 });
+
+describe('POST /api/projects/:id/snapshots/:snapshotId/restore', () => {
+  let project;
+
+  beforeEach(async() => {
+    project = await createProject();
+  });
+
+  it('returns 400 for an invalid project id', async() => {
+    const res = await request(app).post(`/api/projects/bad-id/snapshots/${FAKE_ID}/restore`);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 for a non-existent project', async() => {
+    const res = await request(app).post(`/api/projects/${FAKE_ID}/snapshots/${FAKE_ID}/restore`);
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 for an invalid snapshot id', async() => {
+    const res = await request(app).post(`/api/projects/${project._id}/snapshots/bad-id/restore`);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 404 when the snapshot does not exist', async() => {
+    const res = await request(app).post(`/api/projects/${project._id}/snapshots/${FAKE_ID}/restore`);
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when the snapshot belongs to a different project', async() => {
+    const otherProject = await createProject();
+    const snapshot = await Snapshot.create({
+      projectId: otherProject._id, projectName: otherProject.name, categories: [], columns: [],
+      hash: 'hash-other', savedAt: new Date(),
+    });
+
+    const res = await request(app).post(`/api/projects/${project._id}/snapshots/${snapshot._id}/restore`);
+    expect(res.status).toBe(404);
+  });
+
+  it('replaces the current categories/columns with the snapshot content', async() => {
+    const category = await Category.create({ projectId: project._id, name: 'CatNow', order: 0 });
+    await Column.create({ projectId: project._id, categoryId: category._id, key: 'k', label: 'LabelNow', order: 0 });
+
+    const snapshot = await Snapshot.create({
+      projectId: project._id,
+      projectName: project.name,
+      categories: [{ _id: '507f1f77bcf86cd799439011', name: 'CatThen', order: 0 }],
+      columns: [{
+        _id: '507f1f77bcf86cd799439012', categoryId: '507f1f77bcf86cd799439011', key: 'k2', label: 'LabelThen', order: 0,
+      }],
+      hash: 'hash-restore',
+      savedAt: new Date(),
+    });
+
+    const res = await request(app).post(`/api/projects/${project._id}/snapshots/${snapshot._id}/restore`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.categories).toHaveLength(1);
+    expect(res.body.data.categories[0].name).toBe('CatThen');
+    expect(res.body.data.columns).toHaveLength(1);
+    expect(res.body.data.columns[0].label).toBe('LabelThen');
+    expect(res.body.data.columns[0].categoryId).toBe(res.body.data.categories[0]._id);
+
+    expect(await Category.countDocuments({ projectId: project._id })).toBe(1);
+    expect(await Column.countDocuments({ projectId: project._id })).toBe(1);
+
+    const logs = await OperationLog.find({ projectId: project._id });
+    expect(logs).toHaveLength(1);
+  });
+
+  it('restores a snapshot saved from an unsaved draft (temporary ids) without crashing or losing data', async() => {
+    const category = await Category.create({ projectId: project._id, name: 'Existing', order: 0 });
+    await Column.create({ projectId: project._id, categoryId: category._id, key: 'existing_key', label: 'Existing Col', order: 0 });
+
+    const snapshot = await Snapshot.create({
+      projectId: project._id,
+      projectName: project.name,
+      categories: [{ _id: 'new-cat-1', name: 'DraftCat', order: 0 }],
+      columns: [{ _id: 'new-col-1', categoryId: 'new-cat-1', key: 'draft_key', label: 'DraftCol', order: 0 }],
+      hash: 'hash-draft-restore',
+      savedAt: new Date(),
+    });
+
+    const res = await request(app).post(`/api/projects/${project._id}/snapshots/${snapshot._id}/restore`);
+    expect(res.status).toBe(200);
+
+    expect(res.body.data.categories).toHaveLength(1);
+    expect(res.body.data.categories[0]._id).not.toBe('new-cat-1');
+    expect(res.body.data.columns).toHaveLength(1);
+    expect(res.body.data.columns[0]._id).not.toBe('new-col-1');
+    expect(res.body.data.columns[0].categoryId).toBe(res.body.data.categories[0]._id);
+
+    expect(await Category.countDocuments({ projectId: project._id })).toBe(1);
+    expect(await Column.countDocuments({ projectId: project._id })).toBe(1);
+  });
+});

@@ -6,6 +6,7 @@ import CssClass from '../models/CssClass.js';
 import Format from '../models/Format.js';
 import OperationLog from '../models/OperationLog.js';
 import Snapshot from '../models/Snapshot.js';
+import { isValidId } from '../utils/validate.js';
 
 import { computeDiff } from './diffService.js';
 
@@ -165,6 +166,10 @@ const getSnapshotDiff = async(projectId, snapshotId) => {
 
 /**
  * 指定した復元ポイントの categories/columns を DB へ書き戻す。
+ * スナップショットは未保存ドラフト（一時ID）の状態でも保存できるため、
+ * _id が有効なObjectIdでないカテゴリ・列は新規ドキュメントとして実IDを発行し、
+ * 列の categoryId 参照を実IDへ解決してから挿入する。
+ * 挿入処理が失敗した場合は削除前のカテゴリ・列を復旧してから例外を再スローする。
  * 復元前後の差分を OperationLog に記録する。
  * @param {string} projectId
  * @param {string} snapshotId
@@ -184,24 +189,46 @@ const restoreSnapshot = async(projectId, snapshotId) => {
   await Category.deleteMany({ projectId });
   await Column.deleteMany({ projectId });
 
-  if (snapshot.categories.length > 0) {
-    await Category.insertMany(snapshot.categories.map((c) => ({
-      _id: c._id, projectId, name: c.name, order: c.order ?? 0,
-    })));
-  }
-  if (snapshot.columns.length > 0) {
-    await Column.insertMany(snapshot.columns.map((c) => ({
-      _id: c._id, projectId,
-      categoryId: c.categoryId || null,
-      key: c.key, label: c.label,
-      dataType: c.dataType || null,
-      formatId: c.formatId || null,
-      cssClassIds: c.cssClassIds || [],
-      order: c.order ?? 0,
-      required: !!c.required,
-      defaultValue: c.defaultValue ?? null,
-      validation: c.validation ?? null,
-    })));
+  let insertedCategories = [];
+  let insertedColumns = [];
+  try {
+    const categoryDocs = snapshot.categories.map((c) => {
+      const doc = { projectId, name: c.name, order: c.order ?? 0 };
+      if (isValidId(c._id)) { doc._id = c._id; }
+      return doc;
+    });
+    insertedCategories = categoryDocs.length > 0 ? await Category.insertMany(categoryDocs) : [];
+
+    const catIdMap = new Map(snapshot.categories.map((c, i) => [String(c._id), String(insertedCategories[i]._id)]));
+    const resolveCategoryId = (categoryId) => (categoryId ? (catIdMap.get(String(categoryId)) || null) : null);
+
+    const columnDocs = snapshot.columns.map((c) => {
+      const doc = {
+        projectId,
+        categoryId: resolveCategoryId(c.categoryId),
+        key: c.key, label: c.label,
+        dataType: c.dataType || null,
+        formatId: c.formatId || null,
+        cssClassIds: c.cssClassIds || [],
+        order: c.order ?? 0,
+        required: !!c.required,
+        defaultValue: c.defaultValue ?? null,
+        validation: c.validation ?? null,
+      };
+      if (isValidId(c._id)) { doc._id = c._id; }
+      return doc;
+    });
+    insertedColumns = columnDocs.length > 0 ? await Column.insertMany(columnDocs) : [];
+  } catch (err) {
+    if (insertedCategories.length > 0) {
+      await Category.deleteMany({ _id: { $in: insertedCategories.map((c) => c._id) } });
+    }
+    if (insertedColumns.length > 0) {
+      await Column.deleteMany({ _id: { $in: insertedColumns.map((c) => c._id) } });
+    }
+    if (currentCategories.length > 0) { await Category.insertMany(currentCategories); }
+    if (currentColumns.length > 0) { await Column.insertMany(currentColumns); }
+    throw err;
   }
 
   const [restoredCategories, restoredColumns] = await Promise.all([
