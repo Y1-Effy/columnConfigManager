@@ -89,4 +89,46 @@ describe('Categories API', () => {
       expect(col).toBeNull();
     });
   });
+
+  describe('POST /api/projects/:id/categories/reorder', () => {
+    it('reorders categories by assigning order = index', async() => {
+      const catA = await Category.create({ projectId: project._id, name: 'A', order: 0 });
+      const catB = await Category.create({ projectId: project._id, name: 'B', order: 1 });
+      const catC = await Category.create({ projectId: project._id, name: 'C', order: 2 });
+
+      const res = await request(app)
+        .post(`/api/projects/${project._id}/categories/reorder`)
+        .send({ ids: [catC._id.toString(), catA._id.toString(), catB._id.toString()] });
+      expect(res.status).toBe(200);
+
+      const updated = await Category.find({ projectId: project._id }).sort({ order: 1 });
+      expect(updated[0].name).toBe('C');
+      expect(updated[1].name).toBe('A');
+      expect(updated[2].name).toBe('B');
+    });
+
+    it('returns 400 when ids is not an array', async() => {
+      const res = await request(app)
+        .post(`/api/projects/${project._id}/categories/reorder`)
+        .send({ ids: 'not-an-array' });
+      expect(res.status).toBe(400);
+    });
+
+    it('does not modify a category belonging to a different project', async() => {
+      const catA = await Category.create({ projectId: project._id, name: 'A', order: 0 });
+      const otherProject = await createProject();
+      const foreignCat = await Category.create({ projectId: otherProject._id, name: 'Foreign', order: 5 });
+
+      const res = await request(app)
+        .post(`/api/projects/${project._id}/categories/reorder`)
+        .send({ ids: [foreignCat._id.toString(), catA._id.toString()] });
+      expect(res.status).toBe(200);
+
+      const unchangedForeign = await Category.findById(foreignCat._id);
+      expect(unchangedForeign.order).toBe(5);
+
+      const updatedA = await Category.findById(catA._id);
+      expect(updatedA.order).toBe(1);
+    });
+  });
 });

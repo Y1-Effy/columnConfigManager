@@ -127,5 +127,22 @@ describe('Columns API', () => {
         .send({ ids: 'not-an-array' });
       expect(res.status).toBe(400);
     });
+
+    it('does not modify a column belonging to a different project', async() => {
+      const colA = await Column.create({ projectId: project._id, key: 'a', label: 'A', order: 0 });
+      const otherProject = await createProject();
+      const foreignCol = await Column.create({ projectId: otherProject._id, key: 'x', label: 'X', order: 5 });
+
+      const res = await request(app)
+        .post(`/api/projects/${project._id}/columns/reorder`)
+        .send({ ids: [foreignCol._id.toString(), colA._id.toString()] });
+      expect(res.status).toBe(200);
+
+      const unchangedForeign = await Column.findById(foreignCol._id);
+      expect(unchangedForeign.order).toBe(5);
+
+      const updatedA = await Column.findById(colA._id);
+      expect(updatedA.order).toBe(1);
+    });
   });
 });
