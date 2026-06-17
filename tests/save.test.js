@@ -154,7 +154,7 @@ describe('POST /api/projects/:id/save', () => {
       .send({
         categories: [],
         columns: [{
-          _id: 'new-col-1', key: 'amount', label: '金額', order: 0,
+          _id: 'new-col-1', key: 'amount', label: '金額', dataType: 'number', order: 0,
           formatId: String(format._id), cssClassIds: [String(cssClass._id)],
         }],
       });
@@ -162,6 +162,23 @@ describe('POST /api/projects/:id/save', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.columns[0].formatId._id).toBe(String(format._id));
     expect(res.body.data.columns[0].cssClassIds[0]._id).toBe(String(cssClass._id));
+  });
+
+  it('returns 400 when a column\'s formatId data type does not match its own dataType', async() => {
+    const format = await Format.create({ dataType: 'Date', value: 'yyyy/MM/dd' });
+
+    const res = await request(app)
+      .post(`/api/projects/${project._id}/save`)
+      .send({
+        categories: [],
+        columns: [{
+          _id: 'new-col-1', key: 'amount', label: '金額', dataType: 'number', order: 0,
+          formatId: String(format._id),
+        }],
+      });
+
+    expect(res.status).toBe(400);
+    expect(await Column.countDocuments({ projectId: project._id })).toBe(0);
   });
 
   it('does not create an operation log when nothing changed', async() => {

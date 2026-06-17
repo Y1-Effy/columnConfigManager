@@ -2,6 +2,7 @@ import request from 'supertest';
 
 import app from '../server.js';
 import Column from '../src/models/Column.js';
+import Format from '../src/models/Format.js';
 
 import { FAKE_ID, createProject, setupTestDB } from './mongoHelper.js';
 
@@ -37,6 +38,14 @@ describe('Columns API', () => {
         .send({ key: 'x', label: 'X' });
       expect(res.status).toBe(404);
     });
+
+    it('returns 400 when the format dataType does not match the column dataType', async() => {
+      const format = await Format.create({ dataType: 'Date', value: 'yyyy/MM/dd' });
+      const res = await request(app)
+        .post(`/api/projects/${project._id}/columns`)
+        .send({ key: 'amount', label: 'Amount', dataType: 'number', formatId: format._id.toString() });
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('GET /api/projects/:id/columns', () => {
@@ -69,6 +78,17 @@ describe('Columns API', () => {
         .put(`/api/columns/${FAKE_ID}`)
         .send({ label: 'X' });
       expect(res.status).toBe(404);
+    });
+
+    it('returns 400 when the format dataType does not match the existing column dataType', async() => {
+      const format = await Format.create({ dataType: 'Date', value: 'yyyy/MM/dd' });
+      const column = await Column.create({
+        projectId: project._id, key: 'amount', label: 'Amount', dataType: 'number',
+      });
+      const res = await request(app)
+        .put(`/api/columns/${column._id}`)
+        .send({ formatId: format._id.toString() });
+      expect(res.status).toBe(400);
     });
   });
 

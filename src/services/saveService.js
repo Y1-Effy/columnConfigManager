@@ -1,3 +1,4 @@
+import { FORMAT_DATA_TYPE_BY_COLUMN_TYPE } from '../constants.js';
 import Category from '../models/Category.js';
 import Column from '../models/Column.js';
 import CssClass from '../models/CssClass.js';
@@ -77,6 +78,12 @@ const saveProjectState = async(projectId, { categories: draftCategories, columns
     }
     if (draft.formatId && !formatIds.has(draft.formatId)) {
       return { error: '指定されたフォーマットが存在しません' };
+    }
+    if (draft.formatId) {
+      const fmt = formats.find((f) => String(f._id) === draft.formatId);
+      if (FORMAT_DATA_TYPE_BY_COLUMN_TYPE[draft.dataType] !== fmt.dataType) {
+        return { error: 'フォーマットのデータ型が列のデータ型と一致しません' };
+      }
     }
     if (draft.cssClassIds?.some((id) => !isValidId(id))) {
       return { error: 'CSSクラスIDが不正です' };

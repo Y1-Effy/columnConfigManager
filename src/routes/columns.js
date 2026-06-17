@@ -1,5 +1,6 @@
 import express from 'express';
 
+import { FORMAT_DATA_TYPE_BY_COLUMN_TYPE } from '../constants.js';
 import resolveProject from '../middleware/resolveProject.js';
 import Category from '../models/Category.js';
 import Column from '../models/Column.js';
@@ -64,6 +65,9 @@ nestedRouter.post('/', resolveProject, asyncHandler(async(req, res) => {
   ]);
   if (categoryId && !cat) { return fail(res, '指定されたカテゴリがこのプロジェクトに存在しません', 400); }
   if (formatId && !fmt) { return fail(res, '指定されたフォーマットが存在しません', 400); }
+  if (formatId && FORMAT_DATA_TYPE_BY_COLUMN_TYPE[dataType] !== fmt.dataType) {
+    return fail(res, 'フォーマットのデータ型が列のデータ型と一致しません', 400);
+  }
   if (cssClassIds?.length > 0 && cssFound !== cssClassIds.length) { return fail(res, '存在しないCSSクラスが含まれています', 400); }
 
   const column = await Column.create({
@@ -98,13 +102,17 @@ router.put('/:columnId', asyncHandler(async(req, res) => {
     Object.entries({ key, label, dataType, formatId, cssClassIds, categoryId, order, required, defaultValue, validation })
       .filter(([, v]) => v !== undefined),
   );
+  let existing = null;
+  if (update.categoryId || update.formatId) {
+    existing = await Column.findById(req.params.columnId).lean();
+    if (!existing) {
+      return fail(res, '列が見つかりません', 404);
+    }
+  }
+
   if (update.categoryId) {
     if (!isValidId(update.categoryId)) {
       return fail(res, 'カテゴリIDが不正です', 400);
-    }
-    const existing = await Column.findById(req.params.columnId).lean();
-    if (!existing) {
-      return fail(res, '列が見つかりません', 404);
     }
     const cat = await Category.findOne({ _id: update.categoryId, projectId: existing.projectId }).lean();
     if (!cat) {
@@ -115,6 +123,10 @@ router.put('/:columnId', asyncHandler(async(req, res) => {
     if (!isValidId(update.formatId)) { return fail(res, 'フォーマットIDが不正です', 400); }
     const fmt = await Format.findById(update.formatId).lean();
     if (!fmt) { return fail(res, '指定されたフォーマットが存在しません', 400); }
+    const effectiveDataType = update.dataType !== undefined ? update.dataType : existing.dataType;
+    if (FORMAT_DATA_TYPE_BY_COLUMN_TYPE[effectiveDataType] !== fmt.dataType) {
+      return fail(res, 'フォーマットのデータ型が列のデータ型と一致しません', 400);
+    }
   }
   if (update.cssClassIds && update.cssClassIds.length > 0) {
     const found = await CssClass.countDocuments({ _id: { $in: update.cssClassIds } });
