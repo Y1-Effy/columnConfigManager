@@ -1,0 +1,39 @@
+{
+  "enabledMcpjsonServers": ["playwright"],
+  "permissions": {
+    "allow": [
+      "Bash(npm test*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run lint:fix*)",
+      "Bash(npm run dev*)",
+      "Bash(npm start*)",
+      "Bash(node src/seed.js)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__playwright__*",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "timeout": 30,
+            "command": "$ok=$false; try{$ok=(Invoke-WebRequest 'http://localhost:3000/health' -TimeoutSec 2 -UseBasicParsing).StatusCode -eq 200}catch{}; if(-not $ok){Start-Process cmd -ArgumentList '/c','npm run dev' -NoNewWindow; for($i=0;$i-lt20;$i++){Start-Sleep 1;try{if((Invoke-WebRequest 'http://localhost:3000/health' -TimeoutSec 1 -UseBasicParsing).StatusCode -eq 200){break}}catch{}}}"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run lint -- --quiet 2>&1"
+          }
+        ]
+      }
+    ]
+  }
+}
