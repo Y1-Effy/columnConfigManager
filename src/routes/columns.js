@@ -58,17 +58,18 @@ nestedRouter.post('/', resolveProject, asyncHandler(async(req, res) => {
   if (categoryId && !isValidId(categoryId)) { return fail(res, 'カテゴリIDが不正です', 400); }
   if (formatId && !isValidId(formatId)) { return fail(res, 'フォーマットIDが不正です', 400); }
 
+  const uniqueCssClassIds = cssClassIds?.length > 0 ? [...new Set(cssClassIds)] : [];
   const [cat, fmt, cssFound] = await Promise.all([
     categoryId ? Category.findOne({ _id: categoryId, projectId: req.params.id }).lean() : null,
     formatId ? Format.findById(formatId).lean() : null,
-    cssClassIds?.length > 0 ? CssClass.countDocuments({ _id: { $in: cssClassIds } }) : (cssClassIds?.length ?? 0),
+    uniqueCssClassIds.length > 0 ? CssClass.countDocuments({ _id: { $in: uniqueCssClassIds } }) : 0,
   ]);
   if (categoryId && !cat) { return fail(res, '指定されたカテゴリがこのプロジェクトに存在しません', 400); }
   if (formatId && !fmt) { return fail(res, '指定されたフォーマットが存在しません', 400); }
   if (formatId && FORMAT_DATA_TYPE_BY_COLUMN_TYPE[dataType] !== fmt.dataType) {
     return fail(res, 'フォーマットのデータ型が列のデータ型と一致しません', 400);
   }
-  if (cssClassIds?.length > 0 && cssFound !== cssClassIds.length) { return fail(res, '存在しないCSSクラスが含まれています', 400); }
+  if (uniqueCssClassIds.length > 0 && cssFound !== uniqueCssClassIds.length) { return fail(res, '存在しないCSSクラスが含まれています', 400); }
 
   const column = await Column.create({
     projectId: req.params.id,
@@ -103,7 +104,7 @@ router.put('/:columnId', asyncHandler(async(req, res) => {
       .filter(([, v]) => v !== undefined),
   );
   let existing = null;
-  if (update.categoryId || update.formatId) {
+  if (update.categoryId || update.formatId || update.dataType !== undefined) {
     existing = await Column.findById(req.params.columnId).lean();
     if (!existing) {
       return fail(res, '列が見つかりません', 404);
@@ -119,18 +120,22 @@ router.put('/:columnId', asyncHandler(async(req, res) => {
       return fail(res, '指定されたカテゴリがこのプロジェクトに存在しません', 400);
     }
   }
-  if (update.formatId) {
-    if (!isValidId(update.formatId)) { return fail(res, 'フォーマットIDが不正です', 400); }
-    const fmt = await Format.findById(update.formatId).lean();
+  // 有効なformatId（更新値があればそれ、無ければ既存値）を解決し、dataType との整合性を検証する。
+  // formatId を変更しなくても dataType だけを互換性のない値へ変更できてしまうのを防ぐ。
+  const effectiveFormatId = update.formatId !== undefined ? update.formatId : existing?.formatId;
+  if (effectiveFormatId) {
+    if (!isValidId(effectiveFormatId)) { return fail(res, 'フォーマットIDが不正です', 400); }
+    const fmt = await Format.findById(effectiveFormatId).lean();
     if (!fmt) { return fail(res, '指定されたフォーマットが存在しません', 400); }
-    const effectiveDataType = update.dataType !== undefined ? update.dataType : existing.dataType;
+    const effectiveDataType = update.dataType !== undefined ? update.dataType : existing?.dataType;
     if (FORMAT_DATA_TYPE_BY_COLUMN_TYPE[effectiveDataType] !== fmt.dataType) {
       return fail(res, 'フォーマットのデータ型が列のデータ型と一致しません', 400);
     }
   }
   if (update.cssClassIds && update.cssClassIds.length > 0) {
-    const found = await CssClass.countDocuments({ _id: { $in: update.cssClassIds } });
-    if (found !== update.cssClassIds.length) { return fail(res, '存在しないCSSクラスが含まれています', 400); }
+    const uniqueCssClassIds = [...new Set(update.cssClassIds)];
+    const found = await CssClass.countDocuments({ _id: { $in: uniqueCssClassIds } });
+    if (found !== uniqueCssClassIds.length) { return fail(res, '存在しないCSSクラスが含まれています', 400); }
   }
   const column = await Column.findByIdAndUpdate(
     req.params.columnId,

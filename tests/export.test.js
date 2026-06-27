@@ -69,6 +69,20 @@ describe('Export API', () => {
       expect(uncategorized[0].key).toBe('status');
     });
 
+    it('places orphan columns referencing a missing category in uncategorized', async() => {
+      // 存在しないカテゴリIDを参照する列（孤立列）はどのカテゴリにも属さないため
+      // uncategorized に含めて脱落させない。
+      await Column.create({ projectId: project._id, categoryId: FAKE_ID, key: 'orphan', label: '孤立', order: 0 });
+
+      const res = await request(app).get(`/api/projects/${project._id}/export`);
+      expect(res.status).toBe(200);
+
+      const { categories, uncategorized } = res.body.data;
+      expect(categories).toHaveLength(0);
+      expect(uncategorized).toHaveLength(1);
+      expect(uncategorized[0].key).toBe('orphan');
+    });
+
     it('includes format value in column entry', async() => {
       const fmt = await Format.create({ dataType: 'Date', value: 'yyyy/MM/dd', order: 0 });
       await Column.create({

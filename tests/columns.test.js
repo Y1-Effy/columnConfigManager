@@ -2,6 +2,7 @@ import request from 'supertest';
 
 import app from '../server.js';
 import Column from '../src/models/Column.js';
+import CssClass from '../src/models/CssClass.js';
 import Format from '../src/models/Format.js';
 
 import { FAKE_ID, createProject, setupTestDB } from './mongoHelper.js';
@@ -46,6 +47,14 @@ describe('Columns API', () => {
         .send({ key: 'amount', label: 'Amount', dataType: 'number', formatId: format._id.toString() });
       expect(res.status).toBe(400);
     });
+
+    it('succeeds when cssClassIds contains duplicate ids of an existing class', async() => {
+      const css = await CssClass.create({ value: 'cell-center' });
+      const res = await request(app)
+        .post(`/api/projects/${project._id}/columns`)
+        .send({ key: 'amount', label: 'Amount', cssClassIds: [css._id.toString(), css._id.toString()] });
+      expect(res.status).toBe(201);
+    });
   });
 
   describe('GET /api/projects/:id/columns', () => {
@@ -88,6 +97,17 @@ describe('Columns API', () => {
       const res = await request(app)
         .put(`/api/columns/${column._id}`)
         .send({ formatId: format._id.toString() });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 when changing dataType alone makes the existing format incompatible', async() => {
+      const format = await Format.create({ dataType: 'Date', value: 'yyyy/MM/dd' });
+      const column = await Column.create({
+        projectId: project._id, key: 'order_date', label: '受注日', dataType: 'date', formatId: format._id,
+      });
+      const res = await request(app)
+        .put(`/api/columns/${column._id}`)
+        .send({ dataType: 'string' });
       expect(res.status).toBe(400);
     });
   });

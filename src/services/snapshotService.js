@@ -113,7 +113,7 @@ const saveSnapshot = async(projectId, projectName, { categories, columns, name =
 
   await OperationLog.create({ projectId, operations });
 
-  return { snapshot: created, duplicated: false };
+  return { snapshot: created.toObject(), duplicated: false };
 };
 
 /**

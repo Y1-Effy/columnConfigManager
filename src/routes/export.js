@@ -43,20 +43,29 @@ router.get('/', resolveProject, asyncHandler(async(req, res) => {
     columnsByCategory.get(key).push(col);
   }
 
+  const categoryIdSet = new Set(categories.map((cat) => String(cat._id)));
   const categoriesOutput = categories.map((cat) => ({
     id: cat._id.toString(),
     name: cat.name,
     columns: (columnsByCategory.get(String(cat._id)) ?? []).map(toColumnEntry),
   }));
 
-  const uncategorized = (columnsByCategory.get(null) ?? []).map(toColumnEntry);
+  // カテゴリ未設定（null）の列に加え、存在しないカテゴリを参照する孤立列も未分類として出力する
+  // （いずれかのカテゴリ出力に含まれない列が脱落しないようにする）。
+  const uncategorized = [];
+  for (const [key, cols] of columnsByCategory) {
+    if (key === null || !categoryIdSet.has(key)) {
+      uncategorized.push(...cols);
+    }
+  }
+  const uncategorizedOutput = uncategorized.map(toColumnEntry);
 
   return ok(res, {
     projectId: req.project._id.toString(),
     projectName: req.project.name,
     exportedAt: new Date().toISOString(),
     categories: categoriesOutput,
-    uncategorized,
+    uncategorized: uncategorizedOutput,
   });
 }));
 
